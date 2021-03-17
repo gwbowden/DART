@@ -167,6 +167,7 @@ ${COPY} ${DARTDIR}/work/input.nml                                . || exit 1
 ${COPY} ${DARTDIR}/shell_scripts_dependent/submit_multiple_cycles.csh . || exit 1
 ${COPY} ${DARTDIR}/shell_scripts_dependent/advance_tiegcm.csh    . || exit 1
 ${COPY} ${DARTDIR}/shell_scripts_dependent/assimilate.csh        . || exit 1
+${COPY} ${DARTDIR}/shell_scripts_dependent/run_filter.csh        . || exit 1
 
 # Determine the number of ensemble members from input.nml,
 # it may exist in more than one place.

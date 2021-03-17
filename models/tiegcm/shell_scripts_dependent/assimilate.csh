@@ -204,6 +204,8 @@ if ( -e prior_inflate_restart ) then
    echo "prior_inflate_restart.$TIMESTAMP" >! priorinf_pointer_file.txt
 endif
 
+set JAN1 = `printf %04d%02d%02d%02d%02d $YEAR 1 1 $HOUR $MINUTE`
+
 set ADVTIME = `echo $JAN1 +${DOY}d-1d+1h -g | ./advance_time`
 echo "$ADVTIME[2] $ADVTIME[1]" >! advance_to_time
 

@@ -63,6 +63,10 @@ echo "STEP 1: Set the environment (modules, variables, etc.) for this experiment
 
 # This string gets replaced by stage_experiment when it get copies into place.
 # We need to be in the right directory before we can source DART_params.csh
+
+# Mysterious substitutions happen for array jobs on Gadi without set noglob
+set noglob
+
 cd CENTRALDIRSTRING
 
 if ( -e DART_params.csh ) then
@@ -84,8 +88,8 @@ cd ${INSTANCE_DIRECTORY}
 
 # Make sure we have a clean logfile for this entire advance
 # and set the filename for the DART prior for this member.
-set     logfile = `printf log_advance.%04d.txt $INSTANCE`
-set output_file = `printf filter_ics.%04d $INSTANCE`
+set     logfile = `printf log_advance.%04d.txt $instance`
+set output_file = `printf filter_ics.%04d $instance`
 
 rm -f $logfile
 rm -f input.nml
@@ -208,18 +212,12 @@ if ( -e dart_ics ) then
    ${COPY} dart_ics   dart_priors.${TIMESTAMP} || exit 5
    ${MOVE} dart_ics   ../$output_file          || exit 5
    echo
-   echo "Finished advance_tiegcm.csh for member $INSTANCE at "`date`
+   echo "Finished advance_tiegcm.csh for member $instance at "`date`
 
 else
    echo
-   echo "ERROR: model_to_dart failed for member $INSTANCE"
+   echo "ERROR: model_to_dart failed for member $instance"
    exit 5
 endif
-
-#${MOVE} tiegcm.nml          ../$tieinp      || exit 5
-
-cp dart_ics dart_ics.${TIMESTAMP}
-
-echo "Finished advance_model for process $process at "`date`
 
 exit 0
