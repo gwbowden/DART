@@ -22,8 +22,8 @@
    /
 
 &filter_nml
-   async                    = 4
-   adv_ens_command          = "./advance_model.csh"
+   async                    = 0
+   adv_ens_command          = "./no_advance_model.csh"
    ens_size                 = 4
    start_from_restart       = .true.
    output_restart           = .true.
@@ -48,6 +48,7 @@
    output_inflation         = .true.
    trace_execution          = .true.
    silence                  = .false.
+   write_obs_every_cycle    = .true.
 
    inf_flavor                  = 0,                       0
    inf_initial_from_restart    = .false.,                 .false.
@@ -58,11 +59,11 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
+   inf_sd_initial              = 0.6,                     0.0
+   inf_damping                 = 0.9,                     1.0
    inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000000.0,               1000000.0
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_upper_bound             = 100.0,                   10000.0
+   inf_sd_lower_bound          = 0.6,                     0.0
    /
 
 &smoother_nml
@@ -133,9 +134,9 @@
                'TI',    'KIND_TEMPERATURE_ION',            '100.0',   '10000.0', 'restart',    'UPDATE',
                'TE',    'KIND_TEMPERATURE_ELECTRON',       '100.0',   '10000.0', 'restart',    'UPDATE',
                'OP_NM', 'KIND_DENSITY_ION_OP',             '100.0',   '10000.0', 'restart',    'UPDATE',
+	       'TN',    'KIND_TEMPERATURE',                '150.0',   '6000.0',  'restart',    'UPDATE',
 	       'O1',    'KIND_ATOMIC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
                'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO',  '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
-               'TN',    'KIND_TEMPERATURE',                '0.0',     '6000.0',  'restart',    'NO_COPY_BACK',
                'ZG',    'KIND_GEOMETRIC_HEIGHT',           '100.0',   '1.0e8',   'secondary',  'NO_COPY_BACK',
                'DEN',   'KIND_DENSITY',                    '0.0',     '1.0',     'secondary',  'NO_COPY_BACK',
 	       'N2',    'KIND_MOLEC_NITROGEN_MIXING_RATIO','0.00001', '0.99999', 'secondary',  'NO_COPY_BACK',
@@ -169,9 +170,9 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'GOLD_TEMPERATURE',
-                                'GOLD_NEMAX',
                                 'GOLD_ON2COLUMN',
-   evaluate_these_obs_types   = 'null'
+   evaluate_these_obs_types   = 'SAT_RHO',
+                                'GOLD_NEMAX',
    /
 
 &assim_model_nml

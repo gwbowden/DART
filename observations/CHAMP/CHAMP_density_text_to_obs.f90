@@ -8,7 +8,6 @@ program CHAMP_density_text_to_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-<<<<<<< HEAD
 !   CHAMP_density_text_to_obs - reads fixed-format ASCII files from
 !   http://sisko.colorado.edu/sutton/data/ver2.2/champ/density/2002/ascii/
 !   work/Density_3deg_02_335.ascii is an example of an input file
@@ -32,36 +31,6 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, to_upper
 use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                               set_date, set_time, get_time, print_date, &
                               operator(-), operator(+), operator(>=)
-=======
-!   CHAMP_density_text_to_obs - a program that only needs minor customization to read
-!      in a text-based dataset - either white-space separated values or
-!      fixed-width column data.
-!
-!     created 29 Mar 2010   nancy collins NCAR/IMAGe
-!
-!+ modified 15 Aug 2012 Alexey Morozov (Univ. of Michigan), alexeymor at google mail
-!
-!+ It is designed to read CHAMP ascii files
-!+ For example of input files, see Density_3deg_02_335.ascii in work folder, which is taken from
-!  http://sisko.colorado.edu/sutton/data/ver2.2/champ/density/2002/ascii/
-!+ This program reads the name of the text file, obs_seq file, and "debug" from input.nml
-!+ APPENDS new observations to existing obs_seq.out - see line 130ish
-!+ (but not if you change the obs_out_file in input.nml)
-!+ For added convenience, see convert.sh in work folder, which runs this program repeatedly
-!+ to convert+append many CHAMP files
-!+ Implemented the suggestion about times starting from weird points (like 335th day in 2002)
-!+ - see lines 190ish
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-use         types_mod, only : r8, PI, DEG2RAD
-
-use     utilities_mod, only : initialize_utilities, finalize_utilities, &
-                              open_file, close_file, find_namelist_in_file, check_namelist_read
-
-use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
-                              operator(>=), increment_time, get_time, set_time, &
-                              operator(-), GREGORIAN, operator(+), print_date
 
 use      location_mod, only : VERTISHEIGHT
 

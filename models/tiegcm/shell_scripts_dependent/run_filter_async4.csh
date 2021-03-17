@@ -23,21 +23,16 @@
 ##                     them both. (ppn == Processors Per Node)
 ##
 #PBS -P n23
-#PBS -l walltime=48:00:00
+#PBS -l walltime=3:00:00
 #PBS -l wd
-##PBS -l ncpus=16
-##PBS -l mem=32GB
-#PBS -l ncpus=48
-##PBS -l ncpus=32
-#PBS -l mem=190GB
-##PBS -l mem=120GB
+#PBS -l ncpus=16
+#PBS -l mem=32GB
 #PBS -N run_tiegcm_assim_gadi
 #PBS -m ae
 #PBS -M g.bowden@adfa.edu.au
 #PBS -j oe
 
-#============
-===================================================================
+#===============================================================================
 
 # Load required modules
 module load openmpi
@@ -133,25 +128,16 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 set    DARTDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/models/tiegcm
 set  TIEGCMDIR = /scratch/n23/gwb112/swm_project/TIEGCM
 set TIEGCMDATA = ${TIEGCMDIR}/tiegcm_res5.0_data
-#set TIEGCMDATA = ${TIEGCMDIR}/tiegcm_res2.5_data
 #set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test/initial
 #set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test/initial
 #set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_restart/initial
 #set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_restart/initial
-set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_large/initial
-set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_large/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_hr/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_hr/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_trial_run/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_trial_run/initial
+#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_large/initial
+#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_large/initial
 #set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_14647484.gadi-pbs
 #set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_14647484.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs 
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15913050.gadi-pbs
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15913050.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_16419583.gadi-pbs
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_16419583.gadi-pbs
+set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs 
+set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs
 
 # Need to set TGCMDATA environment variable
 setenv TGCMDATA $TIEGCMDATA

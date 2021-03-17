@@ -62,8 +62,7 @@ if ($ASYNC == 4) then
 #   set RUN_CMD = mpirun.lsf
 #   set RUN_CMD = mpirun
    set mpirun = `cat ../mpirun.command`
-#   set nproc  = $PBS_NCPUS
-   set nproc  = 8
+   set nproc  = $PBS_NCPUS
    set RUN_CMD = $mpirun' -np '$nproc
 else
 #   set RUN_CMD = ''

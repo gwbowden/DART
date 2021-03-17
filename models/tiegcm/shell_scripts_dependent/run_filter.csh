@@ -6,38 +6,40 @@
 #
 # DART $Id$
 #
-##------------------------------------------------------------------------------
-## This block of directives constitutes the preamble for the PBS queuing system
-##
-## the normal way to submit to the queue is:    qsub run_filter.csh
-##
-## an explanation of the most common directives follows:
-## -N     Job name
-## -r n   Declare job non-rerunable
-## -e <arg>  filename for standard error
-## -o <arg>  filename for standard out
-## -q <arg>   Queue name (small, medium, long, verylong)
-## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
-##                     and calgary, there is no way to 'share' the processors
-##                     on the node with another job, so you might as well use
-##                     them both. (ppn == Processors Per Node)
-##
+# Top level script to perform an assimilation.
+#
+# This script is designed to be submitted as a batch job but may be run from 
+# the command line (as a single thread) to check for file motion, etc.
+# If running interactively, please comment out the part that actually runs filter.
+#
+# PLEASE READ THE FOLLOWING: 
+#    Setting the number of tasks and choosing the right ptile requires work.
+# The number of tasks (-n) can be be as big as the ensemble size for
+# a single-threaded tiegcm (i.e. async == 2) so that all ensemble members can 
+# run simultaneously. The setting of ptile specifies the number of tasks on each 
+# node, which usually depends on the model resolution and subsequent memory use 
+# of each ensemble member. Think of ptile as the number of ensemble members you 
+# can run on one node and not run out of the shared memory on that node.
+#    If you specify more tasks than ensemble members, there are tasks that have
+# nothing to do during the model advance. If the model advance step takes longer
+# than the MPI timeout on your machine, you may need to disable the MPI timeout.
+#-----------------------------------------------------------------------------
+#
 #PBS -P n23
-#PBS -l walltime=48:00:00
+#PBS -l walltime=0:05:00
 #PBS -l wd
-##PBS -l ncpus=16
-##PBS -l mem=32GB
-#PBS -l ncpus=48
-##PBS -l ncpus=32
-#PBS -l mem=190GB
-##PBS -l mem=120GB
+#PBS -l ncpus=4
+#PBS -l mem=32GB
 #PBS -N run_tiegcm_assim_gadi
 #PBS -m ae
 #PBS -M g.bowden@adfa.edu.au
 #PBS -j oe
 
-#============
-===================================================================
+#----------------------------------------------------------------------
+# Turns out the scripts are a lot more flexible if you don't rely on 
+# the queuing-system-specific variables -- so I am converting them to
+# 'generic' names and using the generics throughout the remainder.
+#----------------------------------------------------------------------
 
 # Load required modules
 module load openmpi
@@ -123,6 +125,7 @@ endsw
 
 echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 
+#-----------------------------------------------------------------------------
 # Set variables containing various directory names where we will GET things
 # DARTDIR      The location of the DART tiegcm model directory
 # TIEGCMDIR    The location of the TIEGCM executable
@@ -133,25 +136,8 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 set    DARTDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/models/tiegcm
 set  TIEGCMDIR = /scratch/n23/gwb112/swm_project/TIEGCM
 set TIEGCMDATA = ${TIEGCMDIR}/tiegcm_res5.0_data
-#set TIEGCMDATA = ${TIEGCMDIR}/tiegcm_res2.5_data
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_restart/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_restart/initial
-set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_large/initial
-set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_large/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test_hr/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test_hr/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_trial_run/initial
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_trial_run/initial
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_14647484.gadi-pbs
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_14647484.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs 
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15037203.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15913050.gadi-pbs
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_15913050.gadi-pbs
-#set EXPERIMENT = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_16419583.gadi-pbs
-#set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/DART/dart_tiegcm/run_tiegcm_assim_gadi/job_16419583.gadi-pbs
+set EXPERIMENT = /scratch/n23/gwb112/swm_project/gold_test
+set ENSEMBLEDIR = /scratch/n23/gwb112/swm_project/gold_test/initial
 
 # Need to set TGCMDATA environment variable
 setenv TGCMDATA $TIEGCMDATA
@@ -166,16 +152,15 @@ ${COPY} ${DARTDIR}/work/filter                       . || exit 1
 ${COPY} ${DARTDIR}/work/dart_to_model                . || exit 1
 ${COPY} ${DARTDIR}/work/model_to_dart                . || exit 1
 ${COPY} ${DARTDIR}/work/input.nml   input.nml.original || exit 1
-${COPY} ${DARTDIR}/shell_scripts_gadi/advance_model.csh       . || exit 1
-${COPY} ${DARTDIR}/work/wakeup_filter                . || exit 1
+${COPY} ${DARTDIR}/shell_scripts_gadi/advance_model.csh . || exit 1
 
 #${COPY} ${EXPERIMENT}/observation/obs_seq.out        . || exit 1
-${COPY} ${EXPERIMENT}/obs_seq.out            . || exit 1
-${COPY} ${EXPERIMENT}/tiegcm_restart_p.nc    . || exit 1
-${COPY} ${EXPERIMENT}/tiegcm_s.nc            . || exit 1
-${COPY} ${EXPERIMENT}/tiegcm.nml   tiegcm.nml.original || exit 1
-${COPY} ${EXPERIMENT}/gpi*.nc.*              . || exit 1
-${COPY} ${EXPERIMENT}/imf*.nc.*              . || exit 1
+${COPY} ${EXPERIMENT}/initial/obs_seq.out            . || exit 1
+${COPY} ${EXPERIMENT}/initial/tiegcm_restart_p.nc    . || exit 1
+${COPY} ${EXPERIMENT}/initial/tiegcm_s.nc            . || exit 1
+${COPY} ${EXPERIMENT}/initial/tiegcm.nml tiegcm.nml.original || exit 1
+${COPY} ${EXPERIMENT}/initial/gpi*.nc.*              . || exit 1
+${COPY} ${EXPERIMENT}/initial/imf*.nc.*              . || exit 1
 
 ${COPY} ${TIEGCMDIR}/tiegcm.exec/tiegcm2.0      tiegcm || exit 1
 ${COPY} ${TIEGCMDIR}/tiegcm.exec/machines.ini        . || exit 1
@@ -199,7 +184,7 @@ ${COPY} ${TIEGCMDATA}/wei05sc.nc                     . || exit 1
 # model_to_dart_nml    : file_out                   = 'dart_ics'
 #-----------------------------------------------------------------------------
 # ensemble_manager_nml : single_restart_file_in     = .false.
-# filter_nml           : async                      = 4
+# filter_nml           : async                      = 2
 # filter_nml           : adv_ens_command            = './advance_model.csh'
 # filter_nml           : start_from_restart         = .TRUE.
 # filter_nml           : restart_in_file_name       = 'filter_ics'
@@ -213,7 +198,7 @@ sed -e "/ tiegcm_restart_file_name /c\ tiegcm_restart_file_name = 'tiegcm_restar
     -e "/ tiegcm_namelist_file_name /c\ tiegcm_namelist_file_name = 'tiegcm.nml'" \
     -e "/ file_out /c\ file_out = 'dart_ics'" \
     -e "/ single_restart_file_in /c\ single_restart_file_in = .FALSE." \
-    -e "/ async /c\ async = 4" \
+    -e "/ async /c\ async = 2" \
     -e "/ adv_ens_command /c\ adv_ens_command = './advance_model.csh'" \
     -e "/ start_from_restart /c\ start_from_restart = .TRUE." \
     -e "/ restart_in_file_name /c\ restart_in_file_name = 'filter_ics'" \
@@ -222,77 +207,8 @@ sed -e "/ tiegcm_restart_file_name /c\ tiegcm_restart_file_name = 'tiegcm_restar
     -e "/ file_namelist_out /c\ file_namelist_out = 'namelist_update'" \
     input.nml.original >! input.nml  || exit 2
 
-# Determine the number of ensemble members from input.nml,
-# it may exist in more than one place.
-# Parse out the filter_nml string and see which 
-# one is immediately after it ...
-
-if ( ! -e input.nml ) then
-   echo "ERROR - input.nml does not exist in local directory."
-   echo "ERROR - input.nml needed to determine number of ensemble members."
-   exit 1
-endif
-
 set ENSEMBLESTRING = `grep -A 42 filter_nml input.nml | grep ens_size`
 set NUM_ENS = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
-
-# FIXME ... read the async value from input.nml and set parallel_model accordingly.
-# if async=2, e.g. you are going to run './modelxxx', single process
-# (or possibly 'mpirun -np 1 ./modelxxx'), so each processor advances
-# one ensemble independently of the others, leave this as false.
-#
-# if async=4, e.g. all the processors advance each modelxxx in turn with
-# mpirun -np 64 modelxxx (or whatever) for as many ensembles as you have,
-# set this to "true"
-
-set parallel_model = "true"
-
-# A common strategy for the beginning is to check for the existence of
-# some variables that get set by the different queuing mechanisms.
-# This way, we know which queuing mechanism we are working with,
-# and can set 'queue-independent' variables for use for the remainder
-# of the script.
-
-if ($?LS_SUBCWD) then
-
-    # LSF has a list of processors already in a variable (LSB_HOSTS)
-    # alias submit 'bsub < \!*'
-    echo "LSF - using mpirun.lsf for execution"
-    setenv MPICMD mpirun.lsf
-
-else if ($?PBS_O_WORKDIR) then
-
-    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
-    # alias submit 'qsub \!*'
-    echo "PBS - using mpirun for execution"
-    setenv MPICMD mpirun
-
-else
-
-    # If you have a linux cluster with no queuing software, use this
-    # section. The list of computational nodes is given to the mpirun
-    # command and it assigns them as they appear in the file. In some
-    # cases it seems to be necessary to wrap the command in a small
-    # script that changes to the current directory before running.
-
-    echo "running with no queueing system"
-
-    # before running this script, do this once. the syntax is
-    # node name : how many tasks you can run on it
-    #setenv MYNODEFILE ~/nodelist
-    #echo "node7:2" >! $MYNODEFILE
-    #echo "node5:2" >> $MYNODEFILE
-    #echo "node3:2" >> $MYNODEFILE
-    #echo "node1:2" >> $MYNODEFILE
-
-#   one possibility
-    setenv NUM_PROCS `cat nodelist-pgi | wc -l`
-    set MPIRUN = /apps/openmpi/4.0.2/bin/mpirun
-    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
-
-    echo "MPICMD = ${MPICMD}"
-
-endif
 
 @ instance = 1
 while ( $instance <= $NUM_ENS )
@@ -357,68 +273,45 @@ while ( $instance <= $NUM_ENS )
   @ instance++
 end
 
-#-------------------------------------------------------------------------------
-# Everything below this separator should not need to be modified if everything
-# above the separator is set correctly.
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+# Run filter ... 
+#-----------------------------------------------------------------------------
 
-if ( "$parallel_model" == "false" ) then
+${REMOVE} tiegcm_restart_p.nc tiegcm_s.nc tiegcm.nml 
 
-   # each filter task advances the ensembles, each running on 1 proc.
+${LINK} tiegcm_restart_p.nc.0001 tiegcm_restart_p.nc   || exit 3
+${LINK} tiegcm_s.nc.0001         tiegcm_s.nc           || exit 3
+${LINK} tiegcm.nml.0001          tiegcm.nml            || exit 3
 
-   ${MPICMD} ./filter
+${MPI_RUN_CMD} ./filter || exit 3
 
-else
+#-----------------------------------------------------------------------------
+# At this point, all the restart,diagnostic files are in the run/CENTRALDIR.
+# You may want to move them to someplace more 'permanent'.
+#
+# TJH: At this point, the output files have pretty 'generic' names.
+# The files could be archived with the assimilation date in their name.
+#-----------------------------------------------------------------------------
 
-   # filter runs in parallel until time to do a model advance,
-   # and then this script starts up the modelxxx jobs, each one
-   # running in parallel. then it runs wakeup_filter to wake
-   # up filter so it can continue. The communication happens through
-   # 'named pipes' created by the mkfifo command.
+# ${COPY} tiegcm.nml                 ${EXPERIMENT}/tiegcm
+# ${MOVE} tiegcm_s.nc*               ${EXPERIMENT}/tiegcm
+# ${MOVE} tiegcm_restart_p.nc*       ${EXPERIMENT}/tiegcm
+# ${MOVE} tiegcm_out_*               ${EXPERIMENT}/tiegcm
 
-   \rm -f model_to_filter.lock filter_to_model.lock
-   mkfifo model_to_filter.lock filter_to_model.lock
+# ${MOVE} analysis.nc                ${EXPERIMENT}/DART
+# ${MOVE} preassim.nc                ${EXPERIMENT}/DART
+# ${MOVE} obs_seq.final              ${EXPERIMENT}/DART
+# ${MOVE} dart_log.out               ${EXPERIMENT}/DART
 
-   set filterhome = ~/.filter$$
-   if ( ! -e $filterhome) mkdir $filterhome
+# Good style dictates that you save the scripts so you can see what worked.
 
-   # start filter and immediately return control back to this script
+# ${COPY} input.nml                  ${EXPERIMENT}/DART
+# ${COPY} *.csh                      ${EXPERIMENT}/DART
+# ${COPY} $myname                    ${EXPERIMENT}/DART
 
-   (setenv HOME $filterhome; ${MPICMD} ./filter) &
-
-   while ( -e filter_to_model.lock )
-
-      set todo=`cat < filter_to_model.lock`
-      echo "todo received, value = ${todo}"
-
-      if ( "${todo}" == "finished" ) then
-         echo "main script: filter done."
-         wait
-         break
-
-      else if ( "${todo}" == "advance" ) then
-
-         # FIXME : in input.nml, the advance model command must
-         # have -np N with N equal to the number of processors this job is using.
-
-         echo "calling model advance now:"
-         ./advance_model.csh 0 ${NUM_ENS} filter_control00000 || exit 9
-
-         echo "restarting filter."
-         ${MPICMD} ./wakeup_filter
-
-      else
-          echo "main script: unexpected value received."
-          break
-      endif
-   end
-
-   echo "filter finished, removing pipes."
-   \rm -f model_to_filter.lock filter_to_model.lock
-
-   if ( -d $filterhome) \rmdir $filterhome
-
-endif
+echo "${JOBNAME} ($JOBID) finished at "`date`
+echo "These are the files in the run directory at completion:"
+ls -lrt
 
 exit 0
 
