@@ -21,7 +21,9 @@
 #
 # This utility is designed to be run interactively from the CENTRALDIR
 
-set NCYCLES = 11
+set noglob
+
+set NCYCLES = 2
 
 if ( -e DART_params.csh ) then
    source DART_params.csh
@@ -51,7 +53,8 @@ while ( $i <= $NCYCLES )
 
    set submissionstring = `qsub $depstr ./assimilate.csh`
    echo $submissionstring
-   set dajob = `echo $submissionstring | awk '{print($4)}'`
+   #set dajob = `echo $submissionstring | awk '{print($4)}'`
+   set dajob = `echo $submissionstring | awk '{print($1)}'`
    set depstr = "-W depend=afterok:$dajob"
 
    #-----------------------------------------------------------------------
@@ -60,7 +63,8 @@ while ( $i <= $NCYCLES )
 
    set submissionstring = `qsub $depstr ./advance_tiegcm.csh`
    echo $submissionstring
-   set ensjob = `echo $submissionstring | awk '{print($4)}'`
+   #set ensjob = `echo $submissionstring | awk '{print($4)}'`
+   set ensjob = `echo $submissionstring | awk '{print($1)}'`
    set depstr = "-W depend=afterok:$ensjob"
 
    @ i++
@@ -71,7 +75,8 @@ end
 # run Filter to generate the analysis for the last advance.
 #-----------------------------------------------------------------------
 
-qsub $depstr ./run_filter.csh
+#qsub $depstr ./run_filter.csh
+qsub $depstr ./assimilate.csh
 
 exit 0
 

@@ -42,10 +42,10 @@ gold_netcdf_file = '/scratch/n23/gwb112/swm_project/GOLD_Data/2018/314/GOLD_L2_T
 
 &obs_sequence_tool_nml
    filename_seq       = 'obs_seq.gold.combined.out',
-filename_out       = obs_seq.201831423.out
+filename_out       = obs_seq.201830501.out
    gregorian_cal      = .false.
-first_obs_days     = 152619
-first_obs_seconds  = 81001
-last_obs_days      = 152619
-last_obs_seconds   = 84600
+first_obs_days     = 152610
+first_obs_seconds  = 1801
+last_obs_days      = 152610
+last_obs_seconds   = 5400
 /
