@@ -65,7 +65,7 @@ else
    #-------------------------------------------------------------------
 
    setenv ORIGINALDIR `pwd`
-   setenv JOBNAME     run_tiegcm_dependent
+   setenv JOBNAME     run_tiegcm_self_submit
    #setenv JOBID       $$
    setenv JOBID       tiegcm_rundir_`(date +'%Y%m%d')`
    setenv MYQUEUE     Interactive
@@ -164,10 +164,9 @@ ${COPY} ${DARTDIR}/work/advance_time                             . || exit 1
 ${COPY} ${DARTDIR}/work/fill_inflation_restart                   . || exit 1
 ${COPY} ${DARTDIR}/work/obs_sequence_tool                        . || exit 1
 ${COPY} ${DARTDIR}/work/input.nml                                . || exit 1
-${COPY} ${DARTDIR}/shell_scripts_dependent/submit_multiple_cycles.csh . || exit 1
-${COPY} ${DARTDIR}/shell_scripts_dependent/advance_tiegcm.csh    . || exit 1
-${COPY} ${DARTDIR}/shell_scripts_dependent/assimilate.csh        . || exit 1
-#${COPY} ${DARTDIR}/shell_scripts_dependent/run_filter.csh        . || exit 1
+${COPY} ${DARTDIR}/shell_scripts_self_submit/submit_multiple_cycles.csh . || exit 1
+${COPY} ${DARTDIR}/shell_scripts_self_submit/advance_tiegcm.csh    . || exit 1
+${COPY} ${DARTDIR}/shell_scripts_self_submit/assimilate.csh        . || exit 1
 
 # Determine the number of ensemble members from input.nml,
 # it may exist in more than one place.
@@ -187,12 +186,13 @@ set NUM_ENS = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
 # Would not need to, but for a quirk of PBS.
 
 sed -e "s|CENTRALDIRSTRING|$CENTRALDIR|" \
-    ${DARTDIR}/shell_scripts_dependent/assimilate.csh >!     assimilate.csh     || exit 1
+    ${DARTDIR}/shell_scripts_self_submit/assimilate.csh >!     assimilate.csh     || exit 1
 sed -e "s|CENTRALDIRSTRING|$CENTRALDIR|" \
     -e "s|ENSEMBLESIZESTRING|$NUM_ENS|" \
-    ${DARTDIR}/shell_scripts_dependent/advance_tiegcm.csh >! advance_tiegcm.csh || exit 1
+    ${DARTDIR}/shell_scripts_self_submit/advance_tiegcm.csh >! advance_tiegcm.csh || exit 1
+sed -e "s|CENTRALDIRSTRING|$CENTRALDIR|" \
+    ${DARTDIR}/shell_scripts_self_submit/submit_multiple_cycles.csh >! submit_multiple_cycles.csh || exit 1
 
-#${COPY} ${EXPERIMENT}/obs_seq.out                                . || exit 1
 ${COPY} ${EXPERIMENT}/tiegcm_restart_p.nc                        . || exit 1
 ${COPY} ${EXPERIMENT}/tiegcm_s.nc                                . || exit 1
 ${COPY} ${EXPERIMENT}/tiegcm.nml               tiegcm.nml.original || exit 1
@@ -309,7 +309,8 @@ cat << EndOfText >! README.txt
 
 1) cd ${CENTRALDIR}
 2) check namelists
-3) ./submit_multiple_cycles 3
+3) set environment variables NCYCLE and NCYCLES
+4) qsub ./submit_multiple_cycles.csh
 
 EndOfText
 
