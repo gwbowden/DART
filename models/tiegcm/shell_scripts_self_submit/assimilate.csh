@@ -15,7 +15,7 @@
 #-------------------------------------------------------------------------------
 #
 #PBS -P n23
-#PBS -l walltime=0:10:00
+#PBS -l walltime=1:00:00
 #PBS -l wd
 #PBS -l ncpus=48
 #PBS -l mem=190GB
@@ -221,7 +221,7 @@ foreach RESTART ( filter_restart.???? )
 
    # put the DART posterior in the right directory
    set instance = $RESTART:e
-   set INSTANCE_DIRECTORY = `printf "instance_%04d" $instance`
+   set INSTANCE_DIRECTORY = `printf "instance_%04.f" $instance`
    cd $INSTANCE_DIRECTORY
    ${MOVE} -v ../$RESTART  $RESTART.$TIMESTAMP
    \unlink dart_restart

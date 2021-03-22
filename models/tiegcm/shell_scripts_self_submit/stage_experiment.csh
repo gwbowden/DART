@@ -67,7 +67,8 @@ else
    setenv ORIGINALDIR `pwd`
    setenv JOBNAME     run_tiegcm_self_submit
    #setenv JOBID       $$
-   setenv JOBID       tiegcm_rundir_`(date +'%Y%m%d')`
+   #setenv JOBID       tiegcm_rundir_`(date +'%Y%m%d')`
+   setenv JOBID       tiegcm_rundir_`(date +'%Y%m%d%H%M%S')`
    setenv MYQUEUE     Interactive
    setenv MYHOST      $HOST
 

@@ -92,7 +92,7 @@ end
 # run Filter to generate the analysis for the last advance.
 #-----------------------------------------------------------------------
 
-set depstr = "-W depend=afterok$ensjob"
+set depstr = "-W depend=afterok:$dajob$ensjob"
 echo $ensjob
 echo $depstr
 
