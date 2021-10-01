@@ -79,6 +79,8 @@ public :: get_model_size,         &
 public :: tiegcm_to_dart_vector, &
           dart_vector_to_tiegcm, &
           get_f107_value,        &
+          get_df107_value,       &
+          get_dkp_value,         &
           test_interpolate
 
 ! version controlled file description for error handling, do not edit
@@ -100,7 +102,10 @@ character(len=256) :: tiegcm_namelist_file_name  = 'tiegcm.nml'
 logical            :: output_state_vector = .false.
 integer            :: debug = 0
 logical            :: estimate_f10_7 = .false.
+logical            :: adjust_indices = .false.
 integer            :: assimilation_period_seconds = 3600
+real(r8)           :: std_f10_7
+real(r8)           :: std_kp
 
 integer, parameter :: max_num_variables = 30
 integer, parameter :: max_num_columns = 6
@@ -108,7 +113,8 @@ character(len=NF90_MAX_NAME) :: variables(max_num_variables * max_num_columns) =
 
 namelist /model_nml/ output_state_vector, tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
-                     variables, debug, estimate_f10_7, assimilation_period_seconds
+                     variables, debug, estimate_f10_7, assimilation_period_seconds, &
+                     adjust_indices, std_f10_7, std_kp
 
 !-------------------------------------------------------------------------------
 ! Everything needed to describe a variable
@@ -168,6 +174,8 @@ logical  :: include_vTEC_in_state = .false.
 ! development by Tomoko Matsuo as of June 24, 2011)
 
 real(r8)        :: f10_7
+real(r8)        :: df10_7
+real(r8)        :: dkp
 type(time_type) :: state_time ! module-storage declaration of current model time
 
 integer                :: model_size
@@ -224,6 +232,9 @@ subroutine static_init_model()
 integer :: iunit, io
 real(r8) :: total_steps
 
+character(len=4) :: seed_char
+integer :: seed_number
+
 if (module_initialized) return ! only need to do this once
 
 ! Print module information to log file and stdout.
@@ -254,6 +265,22 @@ call read_TIEGCM_namelist(tiegcm_namelist_file_name)
 call read_TIEGCM_definition(tiegcm_restart_file_name)
 call read_TIEGCM_secondary(tiegcm_secondary_file_name)
 
+! If first call initialize random sequence
+! CAUTION: my_task_id is NOT ensemble member number
+! For example, my_task_id will be in [0,N-1]
+! if a single instance of the model using N MPI tasks.
+
+if(first_pert_call) then
+   call get_environment_variable('SEEDNUMBER',seed_char)
+   read(seed_char,'(i)') seed_number
+   call init_random_seq(random_seq,seed_number)
+   first_pert_call = .false.
+endif
+
+! Randomly generate values for df10_7 and dkp
+df10_7 = random_gaussian(random_seq,0.0_r8,std_f10_7)
+dkp    = random_gaussian(random_seq,0.0_r8,std_kp)
+
 ! error-check and convert namelist input to variable_table
 ! and the 'progvar' database in the scope of the module
 call verify_variables(variables, nfields)
@@ -269,7 +296,9 @@ if (do_output() .and. (debug > 0)) then
    write(*,*) 'nilev = ', nilev
    write(*,*) 'model_size = ', model_size
    if (estimate_f10_7) &
-   write(*,*) 'estimating f10.7 ... init value ',f10_7
+        write(*,*) 'estimating f10.7 ... init value ',f10_7
+   if (adjust_indices) &
+        write(*,*) 'adjusting f10.7 and kp ... init values ',df10_7,' and ',dkp
 endif
 
 allocate (ens_mean(model_size))
@@ -692,13 +721,25 @@ ivar   = Find_Variable_by_index(index_in,'get_state_meta_data')
 relindx = index_in - progvar(ivar)%index1 + 1
 
 if     (progvar(ivar)%rank == 0) then  ! scalars ... no location
-   ! f10_7 is most accurately located at local noon at equator.
-   ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
-
-   call get_time(state_time, seconds, days)
-   longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
-   if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
-   location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
+   if ((progvar(ivar)%varname == 'f10_7') .or. &
+        (progvar(ivar)%varname == 'df10_7')) then
+      ! f10_7 is most accurately located at local noon at equator.
+      ! 360.0 degrees in 86400 seconds, 43200 secs == 12:00 UTC == longitude 0.0
+      
+      call get_time(state_time, seconds, days)
+      longitude = 360.0_r8 * real(seconds,r8) / 86400.0_r8 - 180.0_r8
+      if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
+      location = set_location(longitude, 0.0_r8,  400000.0_r8, VERTISUNDEF)
+   elseif (progvar(ivar)%varname == 'dkp') then
+      ! dkp is (presumably) most accurately located at the poles.
+      location = set_location(0.0_r8, 90.0_r8,  400000.0_r8, VERTISUNDEF)
+   else
+      write(string1,*)trim(progvar(ivar)%varname),'is not a known scalar'
+      write(string2,*)'dimension ('//trim(progvar(ivar)%dimnames(1))// &
+           ') ... unknown location'
+      call error_handler(E_ERR,'get_state_meta_data', string1, &
+           source, revision, revdate, text2=string2)
+   endif
 
 elseif (progvar(ivar)%rank == 1) then  ! time?
    write(string1,*)trim(progvar(ivar)%varname),'has unsupported shape (1D)'
@@ -1444,6 +1485,16 @@ ReadVariable: do ivar = 1,nfields
       cycle ReadVariable
    endif
 
+   if (trim(progvar(ivar)%varname) == 'df10_7') then
+      statevec( progvar(ivar)%index1 ) = df10_7
+      cycle ReadVariable
+   endif
+
+   if (trim(progvar(ivar)%varname) == 'dkp') then
+      statevec( progvar(ivar)%index1 ) = dkp
+      cycle ReadVariable
+   endif
+
    ! ZG is already a module variable that is required and comes from
    ! the tiegcm_s.nc (aka "secondary" file).
    if (trim(progvar(ivar)%varname) == 'ZG') then
@@ -1741,6 +1792,72 @@ else
 endif
 
 end function get_f107_value
+
+
+!-------------------------------------------------------------------------------
+
+
+function get_df107_value(x)
+real(r8), dimension(:), intent(in) :: x
+real(r8)                           :: get_df107_value
+
+integer :: ivar
+
+if ( .not. module_initialized ) call static_init_model
+
+! If the df10_7 adjustment is part of the DART state, return that value.
+! If it is not part of the DART state, just return inital value.
+
+if (adjust_indices) then
+
+   VARLOOP : do ivar = 1,nfields
+      if (progvar(ivar)%varname == 'df10_7') then
+         get_df107_value = x(progvar(ivar)%index1)
+         return
+      endif
+   enddo VARLOOP
+
+   call error_handler(E_ERR,'get_df107_value', 'no df10_7 in DART state', &
+        source, revision, revdate)
+
+else
+   get_df107_value = df10_7
+endif
+
+end function get_df107_value
+
+
+!-------------------------------------------------------------------------------
+
+
+function get_dkp_value(x)
+real(r8), dimension(:), intent(in) :: x
+real(r8)                           :: get_dkp_value
+
+integer :: ivar
+
+if ( .not. module_initialized ) call static_init_model
+
+! If the dkp adjustment is part of the DART state, return that value.
+! If it is not part of the DART state, just return initial value.
+
+if (adjust_indices) then
+
+   VARLOOP : do ivar = 1,nfields
+      if (progvar(ivar)%varname == 'dkp') then
+         get_dkp_value = x(progvar(ivar)%index1)
+         return
+      endif
+   enddo VARLOOP
+
+   call error_handler(E_ERR,'get_dkp_value', 'no dkp in DART state', &
+        source, revision, revdate)
+
+else
+   get_dkp_value = dkp
+endif
+
+end function get_dkp_value
 
 
 !-------------------------------------------------------------------------------
@@ -2266,8 +2383,10 @@ if ( estimate_f10_7 ) then
    string1 = 'Estimating f10_7 is not supported.'
    string2 = 'This feature is under development.'
    string3 = 'If you want to experiment with this, change E_ERR to E_MSG in "verify_variables".'
-   call error_handler(E_ERR, 'verify_variables:', string1, &
-                      source, revision, revdate, text2=string2, text3=string3)
+   !call error_handler(E_ERR, 'verify_variables:', string1, &
+   !     source, revision, revdate, text2=string2, text3=string3)
+   call error_handler(E_MSG, 'verify_variables:', string1, &
+        source, revision, revdate, text2=string2, text3=string3)
 
    ngood = ngood + 1
    variable_table(ngood,VT_VARNAMEINDX) = 'f10_7'
@@ -2277,6 +2396,26 @@ if ( estimate_f10_7 ) then
    variable_table(ngood,VT_ORIGININDX)  = 'CALCULATE'
    variable_table(ngood,VT_STATEINDX)   = 'UPDATE'
 
+endif
+
+if ( adjust_indices ) then
+   
+   ngood = ngood + 1
+   variable_table(ngood,VT_VARNAMEINDX) = 'df10_7'
+   variable_table(ngood,VT_KINDINDX)    = 'KIND_1D_PARAMETER'
+   variable_table(ngood,VT_MINVALINDX)  = 'NA'
+   variable_table(ngood,VT_MAXVALINDX)  = 'NA'
+   variable_table(ngood,VT_ORIGININDX)  = 'CALCULATE'
+   variable_table(ngood,VT_STATEINDX)   = 'UPDATE'
+
+   ngood = ngood + 1
+   variable_table(ngood,VT_VARNAMEINDX) = 'dkp'
+   variable_table(ngood,VT_KINDINDX)    = 'KIND_1D_PARAMETER'
+   variable_table(ngood,VT_MINVALINDX)  = 'NA'
+   variable_table(ngood,VT_MAXVALINDX)  = 'NA'
+   variable_table(ngood,VT_ORIGININDX)  = 'CALCULATE'
+   variable_table(ngood,VT_STATEINDX)   = 'UPDATE'
+   
 endif
 
 if (include_vTEC_in_state) then
@@ -2391,6 +2530,42 @@ FillLoop : do ivar = 1, ngood
       progvar(ivar)%index1            = index1
       progvar(ivar)%indexN            = index1 + varsize - 1
       progvar(ivar)%xtype             = NF90_DOUBLE
+      index1                          = index1 + varsize ! sets up for next variable
+
+      cycle FillLoop
+   endif
+
+   if (trim(varname) == 'df10_7') then
+      ! parameter to estimate, value comes from tiegcm.nml
+      varsize = 1
+      progvar(ivar)%long_name         = '10.7 cm solar flux adjustment'
+      progvar(ivar)%units             = 'none'
+      progvar(ivar)%dimnames(1)       = 'parameter'
+      progvar(ivar)%dimlens(1)        = 0
+      progvar(ivar)%rank              = 0
+      progvar(ivar)%varsize           = varsize
+      progvar(ivar)%index1            = index1
+      progvar(ivar)%indexN            = index1 + varsize - 1
+      progvar(ivar)%xtype             = NF90_DOUBLE
+      !progvar(ivar)%update            = .true.
+      index1                          = index1 + varsize ! sets up for next variable
+
+      cycle FillLoop
+   endif
+
+   if (trim(varname) == 'dkp') then
+      ! parameter to estimate, value comes from tiegcm.nml
+      varsize = 1
+      progvar(ivar)%long_name         = 'Kp adjustment'
+      progvar(ivar)%units             = 'none'
+      progvar(ivar)%dimnames(1)       = 'parameter'
+      progvar(ivar)%dimlens(1)        = 0
+      progvar(ivar)%rank              = 0
+      progvar(ivar)%varsize           = varsize
+      progvar(ivar)%index1            = index1
+      progvar(ivar)%indexN            = index1 + varsize - 1
+      progvar(ivar)%xtype             = NF90_DOUBLE
+      !progvar(ivar)%update            = .true.
       index1                          = index1 + varsize ! sets up for next variable
 
       cycle FillLoop

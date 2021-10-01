@@ -25,7 +25,7 @@
 &filter_nml
    async                    = 0
    adv_ens_command          = "unable_to_advance_model.csh"
-   ens_size                 = 60
+   ens_size                 = 90
    start_from_restart       = .true.
    output_restart           = .true.
    obs_sequence_in_name     = "obs_seq.out"
@@ -83,7 +83,7 @@
 
 &assim_tools_nml
    filter_kind                     = 1
-   cutoff                          = 0.2
+   cutoff                          = 100.0
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -130,14 +130,17 @@
    tiegcm_namelist_file_name   = 'tiegcm.nml'
    assimilation_period_seconds = 3600
    estimate_f10_7              = .false.
+   adjust_indices              = .true.
+   std_f10_7                   = 0.2
+   std_kp                      = 0.5
    variables = 'NE',    'KIND_ELECTRON_DENSITY',           '1000.0',  '1.0e20',  'restart',    'UPDATE'
                'OP',    'KIND_DENSITY_ION_OP',             '1.0',     '1.0e20',  'restart',    'UPDATE',
                'TI',    'KIND_TEMPERATURE_ION',            '100.0',   '10000.0', 'restart',    'UPDATE',
                'TE',    'KIND_TEMPERATURE_ELECTRON',       '100.0',   '10000.0', 'restart',    'UPDATE',
                'OP_NM', 'KIND_DENSITY_ION_OP',             '100.0',   '10000.0', 'restart',    'UPDATE',
 	       'TN',    'KIND_TEMPERATURE',                '150.0',   '6000.0',  'restart',    'UPDATE',
-	       'O1',    'KIND_ATOMIC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
-               'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO',  '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
+	       'O1',    'KIND_ATOMIC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'UPDATE',
+               'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO',  '0.00001', '0.99999', 'restart',    'UPDATE',
                'ZG',    'KIND_GEOMETRIC_HEIGHT',           '100.0',   '1.0e8',   'secondary',  'NO_COPY_BACK',
                'DEN',   'KIND_DENSITY',                    '0.0',     '1.0',     'secondary',  'NO_COPY_BACK',
 	       'N2',    'KIND_MOLEC_NITROGEN_MIXING_RATIO','0.00001', '0.99999', 'secondary',  'NO_COPY_BACK',
@@ -155,7 +158,7 @@
    /
 
 &cov_cutoff_nml
-   select_localization = 1
+   select_localization = 2
    /
 
 &reg_factor_nml

@@ -10,15 +10,17 @@
 # the normal way to submit to the queue is:    qsub run_filter.csh
 #
 #PBS -P n23
-#PBS -l walltime=0:05:00
+#PBS -l walltime=0:30:00
 #PBS -l wd
 #PBS -l ncpus=8
 #PBS -l mem=32GB
 #PBS -N tiegcm_advance
-#PBS -m ae
+##PBS -m ae
+#PBS -m n
 #PBS -j oe
 #PBS -r y
 #PBS -v PBS_ARRAY_INDEX
+##PBS -q express
 
 #===============================================================================
 
@@ -140,7 +142,50 @@ set f107         = `grep " F107 "         namelist_update`
 # FIXME TOMOKO ... do we want F107 and F107A to be identical
 #
 # the way to think about the following sed syntax is this:
-# / SearchStringWithWhiteSpaceToMakeUnique  /c\ the_new_contents_of_the_line 
+# / SearchStringWithWhiteSpaceToMakeUnique  /c\ the_new_contents_of_the_line
+
+if ($ADJUST_INDICES == TRUE) then
+    echo "Adjusting indices"
+
+    set year_val     = `grep " START_YEAR " namelist_update | sed 's/.*=//'`
+    set day_val      = `grep " START_DAY " namelist_update | sed 's/.*=//'`
+    set yearday      = $year_val$day_val
+
+    #set yearday0     = `ncks -H -s "%d\n" -v year_day -d ndays,0 $GPINAME`
+    #@ nday_val       = $yearday - $yearday0
+    @ nkp_val        = ${start[5]} / 3
+
+    # FIXME GEORGE unfortunately very slow 
+    set nday_val     =  0
+    while ( $nday_val < 100000 )
+        set yearday_val  = `ncks -H -s "%d\n" -v year_day -d ndays,$nday_val $GPINAME`
+        if ( $yearday_val == $yearday ) then
+	    break
+	endif
+        @ nday_val++
+    end
+
+    set df107        = `grep " DF107 " namelist_update | sed 's/.*=//'`
+    set dkp          = `grep " DKP " namelist_update | sed 's/.*=//'`
+    
+    set f107_val     = `ncks -H -s "%.10f\n" -v f107d -d ndays,$nday_val $GPINAME`
+    set f107a_val    = `ncks -H -s "%.10f\n" -v f107a -d ndays,$nday_val $GPINAME`
+    set kp_val       = `ncks -H -s "%.10f\n" -v kp -d ndays,$nday_val -d nkp,$nkp_val $GPINAME`
+
+    #set f107_val     = `python2 -c "print($df107+$f107_val)"`
+    #set f107a_val    = `python2 -c "print($df107+$f107a_val)"`
+    #set kp_val       = `python2 -c "print($dkp+$kp_val)"`
+
+    set f107_val     = `python2 -c "exec('import math \nx = math.exp($df107)*$f107_val \nprint(x)')"`
+    set f107a_val    = `python2 -c "exec('import math \nx = math.exp($df107)*$f107a_val \nprint(x)')"`
+    set kp_val       = `python2 -c "exec('import math \nx = math.exp($dkp)*$kp_val \nprint(x)')"`
+
+    set f107         = "F107 = "$f107_val
+    set f107a        = "F107A = "$f107a_val
+    set kp           = "KP = "$kp_val
+else
+    echo "Not adjusting indices"
+endif
 
 sed -e "/ START_YEAR /c\ ${start_year}" \
     -e "/ START_DAY /c\ ${start_day}" \
@@ -151,7 +196,9 @@ sed -e "/ START_YEAR /c\ ${start_year}" \
     -e "/ SECSTART /c\ ${secstart}" \
     -e "/ SECSTOP /c\ ${secstop}" \
     -e "/ SECHIST /c\ ${sechist}" \
-    -e "/ F107 /c\ ${f107}" \
+    -e "/ F107 = /c\ ${f107}" \
+    -e "/ F107A = /c\ ${f107a}" \
+    -e "/ KP /c\ ${kp}" \
     tiegcm.nml >! tiegcm.nml.updated
 
 if ( -e tiegcm.nml.updated ) then

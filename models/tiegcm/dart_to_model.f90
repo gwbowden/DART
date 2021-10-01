@@ -28,7 +28,7 @@ use    utilities_mod, only : get_unit, initialize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read,   &
                              logfileunit
 use        model_mod, only : get_model_size, static_init_model, get_f107_value, &
-                             dart_vector_to_tiegcm
+                             get_df107_value, get_dkp_value, dart_vector_to_tiegcm
 use  assim_model_mod, only : aread_state_restart, open_restart_read, close_restart
 use time_manager_mod, only : time_type, get_time, get_date, set_calendar_type, &
                              print_time, print_date, set_date, set_time, &
@@ -130,6 +130,7 @@ integer :: target_doy, target_hour, target_minute ! forecast time interval in mt
 integer :: utsec, year, month, day, sec, model_year
 
 real(r8) :: f10_7
+real(r8) :: df10_7, dkp
 
 ! Write updated TIEGCM namelist variables to a text file.
 ! It is up to advance_model.csh to update the TIEGCM namelist.
@@ -210,7 +211,17 @@ if (io /= 0) call error_handler(E_ERR,'dart_to_model:', &
 f10_7 = get_f107_value(x_state)
 write(file_unit, '('' F107 = '',f14.5)', iostat=io) f10_7 
 if (io /= 0) call error_handler(E_ERR,'dart_to_model:', &
-   'cannot write F107 to '//trim(filename),source,revision,revdate)
+     'cannot write F107 to '//trim(filename),source,revision,revdate)
+
+df10_7 = get_df107_value(x_state)
+write(file_unit, '('' DF107 = '',f14.5)', iostat=io) df10_7 
+if (io /= 0) call error_handler(E_ERR,'dart_to_model:', &
+     'cannot write DF107 to '//trim(filename),source,revision,revdate)
+
+dkp = get_dkp_value(x_state)
+write(file_unit, '('' DKP = '',f14.5)', iostat=io) dkp
+if (io /= 0) call error_handler(E_ERR,'dart_to_model:', &
+     'cannot write DKP to '//trim(filename),source,revision,revdate)
 
 close(file_unit)
 

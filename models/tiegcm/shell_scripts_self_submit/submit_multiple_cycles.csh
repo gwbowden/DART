@@ -15,6 +15,7 @@
 #PBS -N submit_multiple_cycles
 #PBS -v NCYCLES,NCYCLE
 #PBS -j oe
+#PBS -q express
 
 set noglob
 

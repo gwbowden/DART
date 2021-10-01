@@ -22,6 +22,7 @@
 #PBS -N assim
 #PBS -m ae
 #PBS -j oe
+#PBS -q express
 
 #===============================================================================
 
@@ -123,10 +124,49 @@ echo "MODEL TIME read as $YEAR $DOY $HOUR $MINUTE"
 
 set TIMESTAMP = `printf %04d%03d%02d $YEAR $DOY $HOUR`
 
-# Get the appropriate set of observations for this timeframe. 
+# Get the appropriate set of observations for this timeframe.
 
 if ( -e $OBSDIR/obs_seq.$TIMESTAMP.out ) then
   ${LINK} $OBSDIR/obs_seq.$TIMESTAMP.out obs_seq.out || exit 3
+else if (! -e advance_to_time ) then
+  # Get appropriate time and set up advance_to_time
+  # Relies on hourly files obs_seq.YYYYDOYHH.out
+   set OBSPATTERN = $OBSDIR/obs_seq.*.out
+   set FIRSTOBS = $OBSPATTERN[1]:t:q
+   set TIMESTAMP = `echo $FIRSTOBS | awk '{print substr($0, 9, 9)}'`
+
+   set YEAR = 2018
+   set DOY = `echo $TIMESTAMP | awk '{print substr($0, 5, 3)}'`
+   set HOUR = `echo $TIMESTAMP | awk '{print substr($0, 8, 2)}'`
+   set JAN1 = `printf %04d%02d%02d%02d%02d $YEAR 1 1 $HOUR 0`
+
+   set ADVTIME = `echo $JAN1 +${DOY}d-1d+1h -g | ./advance_time`
+   echo "$ADVTIME[2] $ADVTIME[1]" >! advance_to_time
+
+   # Must create each filter_restart.nnnn in the right place, update link
+   # so that 'dart_to_model' gets what it needs.
+   foreach RESTART ( filter_ics.???? )
+
+      # prepend the 'advance_to_time' record to the DART initial conditions.
+      # That way the advance_tiegcm.csh script (specifically dart_to_model)
+      # has the information about the next stop time for the forecast.
+
+      set instance = $RESTART:e
+   
+      cat advance_to_time $RESTART >! temp.file
+      ${MOVE} temp.file filter_restart.$instance
+   
+      # put the DART posterior in the right directory
+      set INSTANCE_DIRECTORY = `printf "instance_%04.f" $instance`
+      cd $INSTANCE_DIRECTORY
+      ${MOVE} -v ../filter_restart.$instance filter_restart.$instance.$TIMESTAMP
+      \unlink dart_restart
+      ${LINK} filter_restart.$instance.$TIMESTAMP dart_restart
+   
+      cd ..
+   end
+   
+   exit 0
 else
    # could run obs_sequence_tool to cut out just the obs of interest
    echo "ERROR: no observations for $YEAR $DOY $HOUR $MINUTE"

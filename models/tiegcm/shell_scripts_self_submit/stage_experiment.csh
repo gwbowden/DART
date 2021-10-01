@@ -53,8 +53,10 @@
 if ($?PBS_O_HOST) then
 
    setenv ORIGINALDIR `pwd`
-   setenv JOBNAME     $PBS_JOBNAME
-   setenv JOBID       $PBS_JOBID
+   #setenv JOBNAME     $PBS_JOBNAME
+   #setenv JOBID       $PBS_JOBID
+   setenv JOBNAME     run_tiegcm_self_submit
+   setenv JOBID       tiegcm_rundir_`(date +'%Y%m%d%H%M%S')`
    setenv MYQUEUE     $PBS_QUEUE
    setenv MYHOST      $HOSTNAME
 
@@ -117,6 +119,7 @@ cat << EndOfText >! DART_params.csh
 module load openmpi
 module load netcdf/4.7.3
 module load hdf5
+module load nco
 
 setenv REMOVE 'rm -rf'
 setenv   COPY 'cp -p'
@@ -134,8 +137,10 @@ echo TIEGCMDIR == \${TIEGCMDIR}
 echo TGCMDATA == \${TGCMDATA}
 
 setenv     DARTDIR \${BASE}/models/tiegcm
-setenv  EXPERIMENT /scratch/n23/gwb112/swm_project/gold_test_large/initial
-setenv ENSEMBLEDIR /scratch/n23/gwb112/swm_project/gold_test_large/initial
+#setenv  EXPERIMENT /scratch/n23/gwb112/swm_project/gold_test_large/initial
+#setenv ENSEMBLEDIR /scratch/n23/gwb112/swm_project/gold_test_large/initial
+setenv  EXPERIMENT /scratch/n23/gwb112/swm_project/gold_test_adjust/initial
+setenv ENSEMBLEDIR /scratch/n23/gwb112/swm_project/gold_test_adjust/initial
 setenv      OBSDIR /scratch/n23/gwb112/swm_project/hourly_gold_obs/gold_obs_201830500_to_201831423
 echo DARTDIR == \${DARTDIR}
 echo EXPERIMENT == \${EXPERIMENT}
@@ -143,6 +148,10 @@ echo ENSEMBLEDIR == \${ENSEMBLEDIR}
 
 setenv     GPINAME gpi_2018280-2018324.nc
 setenv     IMFNAME imf_OMNI_2018280-2018325.nc
+
+# Switch to determine whether to adjust indices
+# (Set TRUE to adjust, other value to not adjust) 
+setenv ADJUST_INDICES TRUE
 EndOfText
 
 # make the resource file executable
@@ -240,8 +249,8 @@ while ( $instance <= $NUM_ENS )
    set imf = "IMF_NCFILE = '$IMFNAME'"
 
    sed -e 's/;.*//' -e '/^$/ d' \
-       -e "/ MXHIST_PRIM /c\ MXHIST_PRIM = 300" \
-       -e "/ MXHIST_SECH /c\ MXHIST_SECH = 300" \
+       -e "/ MXHIST_PRIM /c\ MXHIST_PRIM = 400" \
+       -e "/ MXHIST_SECH /c\ MXHIST_SECH = 400" \
        -e "/ SOURCE /c\ SOURCE = 'tiegcm_restart_p.nc'" \
        -e "/ OUTPUT /c\ OUTPUT = 'tiegcm_restart_p.nc'" \
        -e "/ SECOUT /c\ SECOUT = 'tiegcm_s.nc'"         \
@@ -261,6 +270,8 @@ while ( $instance <= $NUM_ENS )
    else
       # We must convert a tiegcm_restart_p.nc file to a dart_ics file
       # for each ensemble member.
+
+      setenv SEEDNUMBER $instance
 
       ../model_to_dart || exit 2
 
